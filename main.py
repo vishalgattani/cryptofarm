@@ -5,16 +5,7 @@ from os import environ
 import numpy as np
 import pandas as pd
 from coinmetrics.api_client import CoinMetricsClient
-from selenium import webdriver
-from selenium.webdriver import ActionChains
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.select import Select
-from selenium.webdriver.support.wait import WebDriverWait
 from tqdm import tqdm
-from webdriver_manager.chrome import ChromeDriverManager
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -36,6 +27,7 @@ import plotly.io as pio
 from _plotly_future_ import v4_subplots
 from plotly.offline import download_plotlyjs, init_notebook_mode, iplot, plot
 
+from miner import Miner
 from plotly_credentials import api_key, username
 from print_utils import Printer
 from selenium_utils import Download_Data
