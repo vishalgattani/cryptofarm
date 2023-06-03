@@ -179,6 +179,8 @@ if __name__ == "__main__":
     data = calculate_s2f(data, 463)
     data = calculate_s2f(data, 10)
 
+    Printer.red(data.columns)
+
     idx = pd.date_range("01-01-2009", "05-01-2032")
     # idx = pd.date_range('08-01-2010', '05-01-2032')
     result = data.copy(deep=True)
@@ -188,7 +190,7 @@ if __name__ == "__main__":
             "BlkCnt",
             "BlkHeight",
             "Reward",
-            "CapRealUSD",
+            "PriceUSD",
             "PriceBTC",
             "BTCGenFrmBlk",
             "totalBTC",
@@ -226,5 +228,5 @@ if __name__ == "__main__":
 
     print(result.describe())
 
-    plt.plot(result["time"], result["PriceUSD"])
+    plt.plot(result["index"], result["PriceUSD"])
     plt.show()
