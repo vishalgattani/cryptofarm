@@ -38,6 +38,7 @@ from plotly.offline import download_plotlyjs, init_notebook_mode, iplot, plot
 
 from plotly_credentials import api_key, username
 from print_utils import Printer
+from selenium_utils import Download_Data
 from utils import Coinmetrics_API, calculate_s2f
 
 chart_studio.tools.set_credentials_file(username=username, api_key=api_key)
@@ -148,47 +149,31 @@ def get_coinmetrics_api_key():
     return api_key
 
 
+def add_btc_info(df):
+    df["time"] = pd.to_datetime(df["time"]).dt.strftime("%Y-%m-%d")
+    df["BlkHeight"] = df.BlkCnt.cumsum()
+    df["Reward"] = 50 / (2 ** np.floor(df["BlkHeight"] / 210000))
+    df["BTCGenFrmBlk"] = df.BlkCnt * df["Reward"]
+    df["totalBTC"] = df.BTCGenFrmBlk.cumsum()
+    return df
+
+
 if __name__ == "__main__":
-    chrome_driver = "./chromedriver_mac_arm64/chromedriver"
-
-    options = webdriver.ChromeOptions()
-    prefs = {"download.default_directory": str(Path().parent.absolute())}
-    options.add_experimental_option("prefs", prefs)
-
     client = CoinMetricsClient(get_coinmetrics_api_key())
-    # starting_date = datetime.datetime(2009, 1, 3)
 
-    driver = webdriver.Chrome(
-        service=ChromeService(ChromeDriverManager().install()), chrome_options=options
-    )
-
-    # driver = webdriver.Chrome(chrome_driver)
-    driver.get("https://coinmetrics.io/community-network-data/")
-    time.sleep(5)
-    dropdown = Select(
-        driver.find_element(By.ID, "downloadSelect")
-    ).select_by_visible_text("Bitcoin")
-    time.sleep(5)
-    download_button = driver.find_element(By.ID, "downloadButton").click()
-    time.sleep(5)
-    driver.close()
-    sys.exit()
     btc_csv = Path("./btc.csv")
     if not btc_csv.exists():
         Printer.red(
             "Download data from 'https://coinmetrics.io/community-network-data/'"
         )
-
+        coinmetrics_download = Download_Data(
+            link="https://coinmetrics.io/community-network-data/"
+        )
+        coinmetrics_download.open()
+        coinmetrics_download.download()
+        coinmetrics_download.close()
     else:
         ...
-
-    def add_btc_info(df):
-        df["time"] = pd.to_datetime(df["time"]).dt.strftime("%Y-%m-%d")
-        df["BlkHeight"] = df.BlkCnt.cumsum()
-        df["Reward"] = 50 / (2 ** np.floor(df["BlkHeight"] / 210000))
-        df["BTCGenFrmBlk"] = df.BlkCnt * df["Reward"]
-        df["totalBTC"] = df.BTCGenFrmBlk.cumsum()
-        return df
 
     df = pd.read_csv("btc.csv", low_memory=False)
     df = add_btc_info(df)
