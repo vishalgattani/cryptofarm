@@ -5,9 +5,19 @@ from os import environ
 import numpy as np
 import pandas as pd
 from coinmetrics.api_client import CoinMetricsClient
+from selenium import webdriver
+from selenium.webdriver import ActionChains
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.select import Select
+from selenium.webdriver.support.wait import WebDriverWait
 from tqdm import tqdm
+from webdriver_manager.chrome import ChromeDriverManager
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 pd.options.mode.chained_assignment = None  # default='warn'
 import logging
@@ -34,7 +44,7 @@ chart_studio.tools.set_credentials_file(username=username, api_key=api_key)
 
 
 def read_btc_data_from_csv(fname="btc_updated.csv"):
-    data = pd.read_csv(fname)
+    data = pd.read_csv(fname, low_memory=False)
     data["time"] = pd.to_datetime(data["time"]).apply(lambda x: x.date())
     data = data.drop(["Unnamed: 0"], axis=1)
     return data
@@ -128,21 +138,49 @@ def d_parser(s):
     return pd.to_datetime(s, format="%Y-%m-%d")
 
 
-if __name__ == "__main__":
+def get_coinmetrics_api_key():
     try:
         api_key = environ["CM_API_KEY"]
         logging.info("Using API key found in environment")
     except KeyError:
         api_key = ""
         logging.info("API key not found. Using community client")
+    return api_key
 
-    client = CoinMetricsClient(api_key)
+
+if __name__ == "__main__":
+    chrome_driver = "./chromedriver_mac_arm64/chromedriver"
+
+    options = webdriver.ChromeOptions()
+    prefs = {"download.default_directory": str(Path().parent.absolute())}
+    options.add_experimental_option("prefs", prefs)
+
+    client = CoinMetricsClient(get_coinmetrics_api_key())
     # starting_date = datetime.datetime(2009, 1, 3)
 
+    driver = webdriver.Chrome(
+        service=ChromeService(ChromeDriverManager().install()), chrome_options=options
+    )
+
+    # driver = webdriver.Chrome(chrome_driver)
+    driver.get("https://coinmetrics.io/community-network-data/")
+    time.sleep(5)
+    dropdown = Select(
+        driver.find_element(By.ID, "downloadSelect")
+    ).select_by_visible_text("Bitcoin")
+    time.sleep(5)
+    download_button = driver.find_element(By.ID, "downloadButton").click()
+    time.sleep(5)
+    driver.close()
+    sys.exit()
     btc_csv = Path("./btc.csv")
-    assert (
-        btc_csv.exists()
-    ), "download data from 'https://coinmetrics.io/community-network-data/'"
+    if not btc_csv.exists():
+        Printer.red(
+            "Download data from 'https://coinmetrics.io/community-network-data/'"
+        )
+
+    else:
+        ...
 
     def add_btc_info(df):
         df["time"] = pd.to_datetime(df["time"]).dt.strftime("%Y-%m-%d")
@@ -228,5 +266,16 @@ if __name__ == "__main__":
 
     print(result.describe())
 
-    plt.plot(result["index"], result["PriceUSD"])
-    plt.show()
+    # plt.plot(result["index"], result["PriceUSD"])
+    # plt.show()
+
+    """Units for mining
+    Unit	Prefix	Hashes per Second (H/s in words)	H/s (in numbers)
+    kH/s	kilo-	one kilohash equals one thousand hashes per second	1 kH/s = 1,000 H/s
+    MH/s	mega-	one megahash equals one million hashes per second	1 MH/s = 1,000,000 H/s
+    GH/s	giga-	one gigahash equals one billion hashes per second	1 GH/s = 1,000,000,000 H/s
+    TH/s	tera-	one terahash equals one trillion hashes per second	1 TH/s = 1,000,000,000,000 H/s
+    PH/s	peta-	one petahash equals one quadrillion hashes per second	1 PH/s = 1,000,000,000,000,000 H/s
+    EH/s	exa-	one exahash equals one quintillion hashes per second	1 EH/s = 1,000,000,000,000,000,000 H/s
+    ZH/s	zeta-	one zetahash equals one sextillion hashes per second	1 ZH/s = 1,000,000,000,000,000,000,000 H/s
+    """
