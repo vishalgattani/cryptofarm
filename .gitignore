@@ -2,3 +2,4 @@ __pycache__
 .DS_Store
 plotly_credentials.py
 venv
+chromedriver_mac_arm64

@@ -2,6 +2,7 @@ import datetime
 import warnings
 from os import environ
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from coinmetrics.api_client import CoinMetricsClient
@@ -16,24 +17,11 @@ import sys
 import time
 from pathlib import Path
 
-import chart_studio
-import chart_studio.plotly as cspy
-import chart_studio.tools as tls
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.figure_factory as ff
-import plotly.graph_objs as go
-import plotly.io as pio
-from _plotly_future_ import v4_subplots
-from plotly.offline import download_plotlyjs, init_notebook_mode, iplot, plot
-
-from miner import Miner
-from plotly_credentials import api_key, username
+from miner import Miner, Mining
+from plotly_plot_utils import plot
 from print_utils import Printer
 from selenium_utils import Download_Data
 from utils import Coinmetrics_API, calculate_s2f
-
-chart_studio.tools.set_credentials_file(username=username, api_key=api_key)
 
 
 def read_btc_data_from_csv(fname="btc_updated.csv"):
@@ -44,8 +32,8 @@ def read_btc_data_from_csv(fname="btc_updated.csv"):
 
 
 def days_between(d1, d2):
-    d1 = datetime.strptime(d1, "%Y-%m-%d")
-    d2 = datetime.strptime(d2, "%Y-%m-%d")
+    d1 = datetime.datetime.strptime(d1, "%Y-%m-%d")
+    d2 = datetime.datetime.strptime(d2, "%Y-%m-%d")
     return abs((d2 - d1).days)
 
 
@@ -93,12 +81,12 @@ def get_s2f_table():
         "2032-05-01",
     ]
 
-    sftable = pd.DataFrame(columns=["date", "StockBTC", "RewardBTC", "FlowBTC"])
+    sftable = pd.DataFrame(columns=["time", "StockBTC", "RewardBTC", "FlowBTC"])
     sflist = []
     # sftable.columns = ["Date","StockBTC","RewardBTC","FlowBTC"]
     for date in halving_dates:
         block = days_between(genesis, date) * 24 * 6
-        d1 = datetime.strptime(date, "%Y-%m-%d")
+        d1 = datetime.datetime.strptime(date, "%Y-%m-%d")
         l = [
             d1,
             btcSupplyAtBlock(block),
@@ -107,10 +95,10 @@ def get_s2f_table():
         ]
         sflist.append(l)
         # print(date + " - " + str(btcSupplyAtBlock(block))+ " - " + str(btcRewardAtBlock(block)))
-    sftable = pd.DataFrame(sflist, columns=["date", "StockBTC", "RewardBTC", "FlowBTC"])
-    # sftable['date'] = pd.to_datetime(sftable['date'], format='%y-%m-%d')
+    sftable = pd.DataFrame(sflist, columns=["time", "StockBTC", "RewardBTC", "FlowBTC"])
+    sftable["time"] = pd.to_datetime(sftable["time"], format="%y-%m-%d")
 
-    sftable.set_index("date", inplace=True)
+    # sftable.set_index("time", inplace=True)
     sftable["s2f"] = sftable.StockBTC / sftable.FlowBTC
     return sftable
 
@@ -161,9 +149,7 @@ if __name__ == "__main__":
         coinmetrics_download = Download_Data(
             link="https://coinmetrics.io/community-network-data/"
         )
-        coinmetrics_download.open()
-        coinmetrics_download.download()
-        coinmetrics_download.close()
+        coinmetrics_download.run()
     else:
         ...
 
@@ -194,7 +180,10 @@ if __name__ == "__main__":
     data = calculate_s2f(data, 463)
     data = calculate_s2f(data, 10)
 
-    Printer.red(data.columns)
+    data_copy = data.copy()
+    data_copy = data_copy.set_index("time")
+
+    data_copy.to_csv("data_copy.csv")
 
     idx = pd.date_range("01-01-2009", "05-01-2032")
     # idx = pd.date_range('08-01-2010', '05-01-2032')
@@ -204,6 +193,7 @@ if __name__ == "__main__":
             "time",
             "BlkCnt",
             "BlkHeight",
+            "DiffLast",
             "Reward",
             "PriceUSD",
             "PriceBTC",
@@ -216,16 +206,23 @@ if __name__ == "__main__":
             "s2f_ratio_usd_10",
         ]
     ]
+
+    # ax = plt.gca()
+    # plt.plot(result.index,result.PriceUSD)
+    # plt.plot(result.index,result.s2f_ratio_usd_463)
+    # ax.set_yscale('log')
+    # plt.show()
+
     result = result.set_index(["time"])
     result = result.reindex(idx, fill_value=None)
-    Printer.blue(result.columns)
     result.loc["2024-05-02"]["Reward"] = 3.125
     result.loc["2028-05-02"]["Reward"] = 1.5625
-    result = result.bfill()
+    # result = result.bfill()
     result.Reward = result.Reward.ffill()
     result.BlkCnt = result.BlkCnt.bfill()
     result.BlkCnt = result.BlkCnt.fillna(144)
     result.BTCGenFrmBlk = result.BlkCnt * result.Reward
+    result.index = result.index.set_names(["time"])
     result = result.reset_index()
     lastvalidindex = result["btc_supply_by_dates"].index.get_loc(
         result["btc_supply_by_dates"].last_valid_index()
@@ -241,11 +238,6 @@ if __name__ == "__main__":
     result = calculate_s2f(result, 463)
     result = calculate_s2f(result, 10)
 
-    print(result.describe())
-
-    # plt.plot(result["index"], result["PriceUSD"])
-    # plt.show()
-
     """Units for mining
     Unit	Prefix	Hashes per Second (H/s in words)	H/s (in numbers)
     kH/s	kilo-	one kilohash equals one thousand hashes per second	1 kH/s = 1,000 H/s
@@ -256,3 +248,38 @@ if __name__ == "__main__":
     EH/s	exa-	one exahash equals one quintillion hashes per second	1 EH/s = 1,000,000,000,000,000,000 H/s
     ZH/s	zeta-	one zetahash equals one sextillion hashes per second	1 ZH/s = 1,000,000,000,000,000,000,000 H/s
     """
+
+    s2f_table = get_s2f_table()
+    s2f_table.to_csv("s2f_table.csv")
+
+    result = result[result["time"].notnull() == True].set_index("time")
+    s2f_table = s2f_table[s2f_table["time"].notnull() == True].set_index("time")
+
+    result.index = pd.DatetimeIndex(result.index)
+    result = result.reindex(idx)
+    s2f_table.index = pd.DatetimeIndex(s2f_table.index)
+    s2f_table = s2f_table.reindex(idx)
+
+    result = result.join(s2f_table, how="left")
+    result.s2f = result.s2f.ffill()
+    result["MV"] = np.exp(14.6) * result["s2f"] ** 3.3
+    # result.StockBTC = result.StockBTC.bfill()
+    result.StockBTC = result.StockBTC.ffill()
+    result["PriceS2F"] = result["MV"] / result["StockBTC"]
+
+    plot(result, "Price BTC", "time", "$")
+
+    s19 = Miner("s19", 95, "TH", 9000, 3.250)
+    s19pro = Miner("s19 pro", 110, "TH", 11500, 3.250)
+    s19jpro = Miner("s19j pro", 100, "TH", 10707, 3.050)
+
+    print(s19.get_params())
+
+    minerslist = [
+        ["s19", 95, 9000, 3.250],
+        ["s19j pro", 100, 10707, 3.050],
+        ["s19 pro", 110, 11500, 3.250],
+    ]
+
+    mining = Mining(s19pro, 4, 0.8, result)
+    mining.start_mining()
