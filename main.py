@@ -267,7 +267,7 @@ if __name__ == "__main__":
     result.StockBTC = result.StockBTC.ffill()
     result["PriceS2F"] = result["MV"] / result["StockBTC"]
 
-    plot(result, "Price BTC", "time", "$")
+    # plot(result, "Price BTC", "time", "$")
 
     s19 = Miner("s19", 95, "TH", 9000, 3.250)
     s19pro = Miner("s19 pro", 110, "TH", 11500, 3.250)
@@ -282,4 +282,10 @@ if __name__ == "__main__":
     ]
 
     mining = Mining(s19pro, 4, 0.8, result)
-    mining.start_mining()
+    from_date = datetime.date.today()
+    from_date = from_date.strftime("%Y-%m-%d")
+
+    mining.start_mining(from_date)
+    mined_data = mining.return_mined_data()
+
+    print(mined_data)

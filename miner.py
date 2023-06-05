@@ -2,6 +2,40 @@ import datetime
 
 import numpy as np
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+url = "https://www.bitrawr.com/difficulty-estimator"
+rv = requests.get(url)
+content = rv.text
+
+
+class Difficulty_Fetcher:
+    def __init__(self):
+        self.url = "https://btc.com/stats/diff"
+        self.difficulty = {}
+
+    def fetch_difficulty(self):
+        rv = requests.get(self.url)
+        soup = BeautifulSoup(rv.text, features="html.parser")
+        html_text = soup.find("div", {"class": "diff-summary"}).text
+        html_text = html_text.splitlines()
+        html_text = [i.strip() for i in html_text if i]
+        curr_difficulty = float(
+            html_text[html_text.index("Difficulty") + 1].split("-")[0].replace(",", "")
+        )
+        next_difficulty = float(
+            html_text[html_text.index("Next Difficulty Estimated") + 1]
+            .split("-")[0]
+            .replace(",", "")
+        )
+        self.difficulty = {
+            "curr_difficulty": curr_difficulty,
+            "next_difficulty": next_difficulty,
+        }
+
+    def get_difficulty(self):
+        return self.difficulty
 
 
 class Miner:
@@ -65,16 +99,24 @@ class Mining:
         self.difficulty_increase_max_2wk = 0.05
         self.result = result
         self.mined_data = None
+        self.difficulty_fetcher = Difficulty_Fetcher()
 
-    def start_mining(self, from_date, curr_difficulty, next_difficulty):
+    def start_mining(self, from_date):
         mining_df = self.result.copy()
-        mask = mining_df.index == datetime.strptime(from_date, "%Y-%m-%d")
+        mask = mining_df.index == datetime.datetime.strptime(from_date, "%Y-%m-%d")
+        # mask = mining_df.index == from_date
         mining_df.DiffLast = mining_df.DiffLast.ffill()
         mining_df["diff_last_min"] = np.nan
         mining_df["diff_last_max"] = np.nan
         mining_df["diff_last_avg"] = np.nan
+
         row_from_date = np.where(mask)[0][0]
-        next_diff = next_difficulty
+
+        self.difficulty_fetcher.fetch_difficulty()
+        difficulty = self.difficulty_fetcher.get_difficulty()
+
+        next_diff = difficulty.get("next_difficulty", None)
+        assert next_diff is not None
         next_diffmin = next_diff
         next_diffmax = next_diff
         next_diffavg = next_diff
@@ -92,7 +134,9 @@ class Mining:
         mining_df.diff_last_max = mining_df.diff_last_max.ffill()
 
         mined_df = mining_df.copy()
-        mined_df = mined_df[mined_df.index >= datetime.strptime(from_date, "%Y-%m-%d")]
+        mined_df = mined_df[
+            mined_df.index >= datetime.datetime.strptime(from_date, "%Y-%m-%d")
+        ]
         mined_df["daily_btc_mined_avg"] = (
             mined_df.Reward * self.num_miners * self.miner.hashrate_value * 86400
         ) / (mined_df.diff_last_max * (2**32))
