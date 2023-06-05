@@ -5,10 +5,6 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-url = "https://www.bitrawr.com/difficulty-estimator"
-rv = requests.get(url)
-content = rv.text
-
 
 class Difficulty_Fetcher:
     def __init__(self):
@@ -100,6 +96,14 @@ class Mining:
         self.result = result
         self.mined_data = None
         self.difficulty_fetcher = Difficulty_Fetcher()
+        self.minerslist = [
+            ["s19", 95, 9000, 3.250],
+            ["s19j pro", 100, 10707, 3.050],
+            ["s19 pro", 110, 11500, 3.250],
+        ]
+
+    def get_miner_details(self):
+        print(self.minerslist)
 
     def start_mining(self, from_date):
         mining_df = self.result.copy()

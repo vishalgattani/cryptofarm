@@ -207,17 +207,10 @@ if __name__ == "__main__":
         ]
     ]
 
-    # ax = plt.gca()
-    # plt.plot(result.index,result.PriceUSD)
-    # plt.plot(result.index,result.s2f_ratio_usd_463)
-    # ax.set_yscale('log')
-    # plt.show()
-
     result = result.set_index(["time"])
     result = result.reindex(idx, fill_value=None)
     result.loc["2024-05-02"]["Reward"] = 3.125
     result.loc["2028-05-02"]["Reward"] = 1.5625
-    # result = result.bfill()
     result.Reward = result.Reward.ffill()
     result.BlkCnt = result.BlkCnt.bfill()
     result.BlkCnt = result.BlkCnt.fillna(144)
@@ -237,17 +230,6 @@ if __name__ == "__main__":
 
     result = calculate_s2f(result, 463)
     result = calculate_s2f(result, 10)
-
-    """Units for mining
-    Unit	Prefix	Hashes per Second (H/s in words)	H/s (in numbers)
-    kH/s	kilo-	one kilohash equals one thousand hashes per second	1 kH/s = 1,000 H/s
-    MH/s	mega-	one megahash equals one million hashes per second	1 MH/s = 1,000,000 H/s
-    GH/s	giga-	one gigahash equals one billion hashes per second	1 GH/s = 1,000,000,000 H/s
-    TH/s	tera-	one terahash equals one trillion hashes per second	1 TH/s = 1,000,000,000,000 H/s
-    PH/s	peta-	one petahash equals one quadrillion hashes per second	1 PH/s = 1,000,000,000,000,000 H/s
-    EH/s	exa-	one exahash equals one quintillion hashes per second	1 EH/s = 1,000,000,000,000,000,000 H/s
-    ZH/s	zeta-	one zetahash equals one sextillion hashes per second	1 ZH/s = 1,000,000,000,000,000,000,000 H/s
-    """
 
     s2f_table = get_s2f_table()
     s2f_table.to_csv("s2f_table.csv")
@@ -272,14 +254,6 @@ if __name__ == "__main__":
     s19 = Miner("s19", 95, "TH", 9000, 3.250)
     s19pro = Miner("s19 pro", 110, "TH", 11500, 3.250)
     s19jpro = Miner("s19j pro", 100, "TH", 10707, 3.050)
-
-    print(s19.get_params())
-
-    minerslist = [
-        ["s19", 95, 9000, 3.250],
-        ["s19j pro", 100, 10707, 3.050],
-        ["s19 pro", 110, 11500, 3.250],
-    ]
 
     mining = Mining(s19pro, 4, 0.8, result)
     from_date = datetime.date.today()
